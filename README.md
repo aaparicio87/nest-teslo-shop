@@ -5,13 +5,29 @@
 
 ## Description
 
-Teslo Shop is a NestJS-based e-commerce platform that provides a robust and scalable solution for building online stores. It is designed to be highly customizable and extensible, allowing developers to easily integrate new features and functionality.
+Teslo Shop API is a NestJS-based e-commerce platform that provides a robust and scalable solution for building online stores. It is designed to be highly customizable and extensible, allowing developers to easily integrate new features and functionality.
+
+## Stack
+* NestJS
+* PostgreSQL
+* Docker
 
 ## Installation
 
 ```bash
 $ pnpm install
 ```
+
+## Start DB
+
+```bash
+$ docker-compose up -d
+```
+
+## Config environment variables
+
+Copy the file __.env.sample__ to __.env__ 
+and edit it with your own values.
 
 ## Running the app
 
