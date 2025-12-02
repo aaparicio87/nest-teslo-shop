@@ -8,10 +8,11 @@ import {
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Product } from './entities/product.entity';
 import { FindOneDto } from './dto/find-one.dto';
 import { PaginationDto } from 'src/common/dtos/pagination.dto';
+import { ProductImage } from './entities/product-image.entity';
 
 @Injectable()
 export class ProductsService {
@@ -20,13 +21,26 @@ export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
+
+    @InjectRepository(ProductImage)
+    private readonly productImageRepository: Repository<ProductImage>,
+
+    private readonly datasource: DataSource,
   ) {}
 
   async create(createProductDto: CreateProductDto) {
+    const { images = [], ...productDetail } = createProductDto;
     try {
-      const product = this.productRepository.create(createProductDto);
+      const product = this.productRepository.create({
+        ...productDetail,
+        images: images.map((image) =>
+          this.productImageRepository.create({ url: image }),
+        ),
+      });
+
       await this.productRepository.save(product);
-      return product;
+
+      return { ...product, images };
     } catch (error) {
       this.handleExceptions(error);
     }
@@ -35,13 +49,28 @@ export class ProductsService {
   async findAll(pagination: PaginationDto) {
     const { limit = 10, offset = 0 } = pagination;
     try {
-      return this.productRepository.find({
+      const products = await this.productRepository.find({
         take: limit,
         skip: offset,
+        relations: {
+          images: true,
+        },
       });
+      return products.map((product) => ({
+        ...product,
+        images: product.images.map((image) => image.url),
+      }));
     } catch (error: unknown) {
       this.handleExceptions(error);
     }
+  }
+
+  async findOnePlain(term: FindOneDto) {
+    const { images, ...product } = await this.findOne(term);
+    return {
+      ...product,
+      images: images.map((image) => image.url),
+    };
   }
 
   async findOne(term: FindOneDto) {
@@ -60,17 +89,39 @@ export class ProductsService {
   }
 
   async update(id: string, updateProductDto: UpdateProductDto) {
-    try {
-      // If exists, prepare the data to update
-      const product = await this.productRepository.preload({
-        id,
-        ...updateProductDto,
-      });
-      if (!product)
-        throw new NotFoundException(`Product with id ${id} not found`);
+    const { images, ...toUpdate } = updateProductDto;
 
-      await this.productRepository.save(product);
+    // If exists, prepare the data to update
+    const product = await this.productRepository.preload({
+      id,
+      ...toUpdate,
+    });
+
+    if (!product)
+      throw new NotFoundException(`Product with id ${id} not found`);
+
+    // Create query runner
+    const queryRunner = this.datasource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      if (images) {
+        await queryRunner.manager.delete(ProductImage, { product: { id } });
+        product.images = images.map((image) =>
+          this.productImageRepository.create({ url: image }),
+        );
+      }
+
+      await queryRunner.manager.save(product);
+
+      await queryRunner.commitTransaction();
+      await queryRunner.release();
+
+      return this.findOnePlain({ id });
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+      await queryRunner.release();
       this.handleExceptions(error);
     }
   }
@@ -92,5 +143,14 @@ export class ProductsService {
     throw new InternalServerErrorException(
       'Unexpected error, check server logs',
     );
+  }
+
+  async deleteAllProducts() {
+    const query = this.productRepository.createQueryBuilder('product');
+    try {
+      await query.delete().where({}).execute();
+    } catch (error) {
+      this.handleExceptions(error);
+    }
   }
 }

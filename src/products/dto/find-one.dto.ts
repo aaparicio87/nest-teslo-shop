@@ -4,9 +4,9 @@ export class FindOneDto {
   @IsOptional()
   @IsString()
   @IsUUID()
-  id: string;
+  id?: string;
 
   @IsOptional()
   @IsString()
-  slug: string;
+  slug?: string;
 }

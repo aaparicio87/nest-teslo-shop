@@ -29,6 +29,13 @@ $ docker-compose up -d
 Copy the file __.env.sample__ to __.env__ 
 and edit it with your own values.
 
+
+## Seed the database
+
+```bash
+http://localhost:3000/api/v1/seed
+```
+
 ## Running the app
 
 ```bash
