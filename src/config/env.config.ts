@@ -6,4 +6,5 @@ export const EnvConfig = () => ({
   dbHost: process.env.DB_HOST || 'localhost',
   dbPort: process.env.DB_PORT || 5432,
   dbUsername: process.env.DB_USERNAME || 'postgres',
+  hostApi: process.env.HOST_API || 'http://localhost:3000/api',
 });
