@@ -8,4 +8,5 @@ export const JoiValidaitonSchema = Joi.object({
   DB_PORT: Joi.number().default(5432),
   DB_USERNAME: Joi.string().default('postgres'),
   HOST_API: Joi.string().uri().default('http://localhost:3000/api'),
+  JWT_SECRET: Joi.string().required(),
 });
